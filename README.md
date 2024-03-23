@@ -14,6 +14,6 @@ Licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (
 ## Development milestones
 | Milestone   | First commit (build number) | Last commit (build number) | Goals                       | Release |
 | ----------- | --------------------------- | -------------------------- | --------------------------- | ------- |
-| Milestone 1 | current commit (M1-1)       | \-                         | [M1 Goals](misc/m1goals.md) | \-      |
+| Milestone 1 | c490191 (M1-1)              | \-                         | [M1 Goals](misc/m1goals.md) | \-      |
 | Milestone 2 | \-                          | \-                         | [M2 Goals](misc/m2goals.md) | \-      |
 | Milestone 3 | \-                          | \-                         | [M3 Goals](misc/m3goals.md) | \-      |
