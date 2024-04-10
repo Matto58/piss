@@ -15,8 +15,14 @@ let embedTest;
 /** @type {PWindow} */
 let taskbar;
 
+/** @type {{window: PWindow, thisObj: any, extraData: any}} */
+let pwParseTest;
+
 /** @type {PWindow[]} */
 let windows;
+
+/** @type {{window: PWindow, thisObj: any, extraData: any}[]} */
+let windowsFromFile;
 
 let focusedInx = 2;
 
@@ -75,6 +81,15 @@ function setup()
 	taskbar.elems[1].applyImg("https://matto58.github.io/the owo.ico");
 
 	windows = [desktop, example, embedTest, taskbar];
+	windowsFromFile = [];
+
+	dlWinFF("winmods/example.pw").then(w => {
+		if (!w) alert("Failed to load example.pw");
+		else windowsFromFile.push(w);
+	})
+	.catch(e => {
+		alert("pakala! " + e);
+	});
 	
 	// todo: make clicking on embed elements focus the window
 	//windows[2].elems[0].props.iframe.mouseClicked(mouseClicked);
@@ -90,6 +105,19 @@ function draw()
 			focusedWin = windows[i];
 		else
 			windows[i].draw(false);
+	}
+	for (let i in windowsFromFile)
+	{
+		let w = windowsFromFile[i];
+		if (w.thisObj.onOpen && !w.thisObj._onOpenExecDone)
+		{
+			w.thisObj.onOpen(w.window, w.extraData);
+			w.thisObj._onOpenExecDone = true;
+		}
+		if (i + windows.length == focusedInx)
+			focusedWin = w.window;
+		else
+			w.window.draw(false);
 	}
 	if (focusedWin) focusedWin.draw(true);
 }
@@ -148,6 +176,14 @@ function keyTyped()
 				window.y = y2;
 				windows.push(window);
 				break;
+			case "startpw":
+				if (ln.length < 4)
+				{
+					alert("Too little args; got " + (ln.length-1) + ", expecting 3 (uri x y)");
+					return false;
+				}
+
+				break;
 			default:
 				alert("Invalid command: " + ln[0]);
 		}
@@ -155,52 +191,116 @@ function keyTyped()
 	return false;
 }
 
-function mouseClicked() {
-	let fwin = windows[focusedInx];
-	for (let i in windows) {
-		let win = windows[i];
+/**
+ * 
+ * @param {PWindow} win 
+ * @param {PWindow} fwin 
+ * @returns 
+ */
+function checkCol(win, fwin, i)
+{
+	// close btn press detection
+	let close = win.getCloseXYWH();
+	if (mouseX >= close.x && mouseX <= close.x + close.w &&
+		mouseY >= close.y && mouseY <= close.y + close.h)
+	{
+		if (!closeWin(i))
+			if (!closeWinFF(i - windows.length))
+				console.log(`Close failed (closeWin(${i})=false, closeWinFF(${i - windowsFromFile.length})=false)`)
+		focusedInx = i-1;
+		console.log("window with inx " + i + " (" + win.title + ") closed");
+		return false;
+	}
+	for (let elem of win.elems) elem.isClicking(win);
 
-		// close btn press detection
-		let close = win.getCloseXYWH();
-		if (mouseX >= close.x && mouseX <= close.x + close.w &&
-			mouseY >= close.y && mouseY <= close.y + close.h)
+	if (win.omitFFS) return true;
+
+	// check if we are good to refocus
+	if (fwin && fwin !== win)
+	{
+		if (mouseX >= fwin.x && mouseX <= fwin.x + fwin.getW() &&
+			mouseY >= fwin.y && mouseY <= fwin.y + fwin.getH())
 		{
-			closeWin(i);
-			focusedInx = i;
-			console.log("window with inx " + i + " (" + win.title + ") closed");
+			collidesWithFwin = true;
+			console.log("refocus not ok!");
 			return false;
 		}
-		for (let elem of win.elems) elem.isClicking(win);
+	}
 
-		if (win.omitFFS) continue;
+	console.log("refocus ok!");
 
-		// check if we are good to refocus
-		if (fwin && fwin !== win)
+	// then we refocus if needed
+	if (mouseX >= win.x && mouseX <= win.x + win.getW() &&
+		mouseY >= win.y && mouseY <= win.y + win.getH() &&
+		focusedInx !== i)
 		{
-			if (mouseX >= fwin.x && mouseX <= fwin.x + fwin.getW() &&
-				mouseY >= fwin.y && mouseY <= fwin.y + fwin.getH())
-			{
-				collidesWithFwin = true;
-				return false;
-			}
+			console.log(`refocus done! ${focusedInx} ${i}`);
+			focusedInx = i;
 		}
+	else console.log(`refocus not done! ${focusedInx} ${i}`);
 
-		// then we refocus if needed
-		if (mouseX >= win.x && mouseX <= win.x + win.getW() &&
-			mouseY >= win.y && mouseY <= win.y + win.getH())
-			if (focusedInx !== i)
-				focusedInx = i;
-		
+	return true;
+}
+
+function mouseClicked() {
+	let fwin = windows[focusedInx];
+	let i = 0;
+	for (; i < windows.length; i++) {
+		let win = windows[i];
+		//console.log("windows: Checking for: ", win);
+		if (!checkCol(win, fwin, i)) return false;
+	}
+	fwin = windowsFromFile[focusedInx-windows.length];
+	for (let j = 0; j < windowsFromFile.length; j++)
+	{
+		let win = windowsFromFile[j];
+		//console.log("windowsFromFile: Checking for: ", win.window);
+		if (!checkCol(win.window, fwin, i)) return false;
+		i++;
 	}
 	return false;
 }
 
 function closeWin(i = -1)
 {
-	if (i >= windows.length && i < 0)
+	if (!windows[i])
 		return false;
 
 	windows[i].onClose();
 	windows.splice(i, 1);
 	return true;
+}
+function closeWinFF(i = -1)
+{
+	if (!windowsFromFile[i])
+		return false;
+
+	windowsFromFile[i].window.onClose();
+	windowsFromFile.splice(i, 1);
+	return true;
+}
+
+/**
+ * @param {string} uri 
+ */
+async function dlWinFF(uri)
+{
+	let win;
+	let res = await fetch(uri);
+	let data = await res.text();
+		
+	let pw = PWinFile.parse(data.split(/\r?\n/));
+	console.log("dlWinFF: parsed:", pw);
+
+	if (!pw)
+	{
+		console.log("dlWinFF: failed to exec static PWinFile.parse()");
+		return null;
+	}
+	
+	win = pw.asWin();
+	console.log("dlWinFF: execed .asWin():", win);
+
+	if (!win) console.log("dlWinFF: failed to exec PWinFile.asWin()");
+	else return win;
 }

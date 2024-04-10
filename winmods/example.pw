@@ -1,0 +1,26 @@
+INFO
+{
+	"title": "example.pw",
+	"xPosition": 800, "yPosition": 800, "width": 200, "height": 200
+}
+END
+
+SCRIPT
+this.onOpen = (win, extraData) => {
+	alert(extraData["str"]);
+	win.elems.push(
+		new PWinElement("text",
+		{
+			r: 255, g: 255, b: 255,
+			text: ":3",
+			size: 100,
+			textAlignHoriz: CENTER, textAlignVert: CENTER
+		}, win.w/2, win.h/2, 0, 0));
+}
+END
+
+EXTRADATA
+{
+	"str": "Hello from example.pw!"
+}
+END
